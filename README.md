@@ -1,7 +1,7 @@
-# ⚡ Episod (`episod`)
+# Episod (`episod`)
 
-> **The high-performance stateful gateway & episodic memory layer for LLM inference.**
-> Giving stateless inference engines (vLLM, SGLang, Ollama, LiteLLM) episodic memory, KV-cache prefix affinity, and hybrid tool orchestration.
+> **The stateful agentic gateway for LLM inference.**
+> Giving stateless inference engines (vLLM, SGLang, Ollama, LiteLLM) episodic conversational memory, KV-cache prefix affinity, and hybrid tool orchestration.
 
 [![Build & Test](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 [![Rust 2024](https://img.shields.io/badge/rust-2024-orange.svg)]()

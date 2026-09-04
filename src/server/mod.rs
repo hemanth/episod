@@ -1,4 +1,5 @@
 pub mod dashboard;
+pub mod docs;
 pub mod handlers;
 pub mod landing;
 pub mod openai_compat;

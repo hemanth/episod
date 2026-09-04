@@ -15,7 +15,7 @@ use episod::{
 #[command(name = "episod")]
 #[command(author = "Episod Community")]
 #[command(version = "0.1.0")]
-#[command(about = "Stateful agentic gateway and episodic memory for LLM inference", long_about = None)]
+#[command(about = "The stateful agentic gateway for LLM inference", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

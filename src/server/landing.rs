@@ -327,7 +327,7 @@ const LANDING_PAGE_HTML: &str = r###"<!DOCTYPE html>
     </div>
     <div class="nav-links">
       <a href="#features" class="nav-link">Architecture</a>
-      <a href="/v1/episodes" class="nav-link">API Spec</a>
+      <a href="/docs" class="nav-link">API Reference</a>
       <a href="/dashboard" class="btn-solid">Open Dashboard</a>
     </div>
   </nav>
@@ -336,17 +336,17 @@ const LANDING_PAGE_HTML: &str = r###"<!DOCTYPE html>
   <section class="hero">
     <div class="hero-badge">
       <span class="status-dot"></span>
-      <span>Ultra-low latency Rust memory gateway for LLMs</span>
+      <span>The stateful agentic gateway for LLM inference</span>
     </div>
 
-    <h1 class="hero-title">The Stateful Memory & Affinity Layer for Inference</h1>
+    <h1 class="hero-title">The Stateful Agentic Gateway for LLM Inference</h1>
     <p class="hero-desc">
       Empower stateless LLM engines like vLLM, SGLang, and Ollama with conversational DAGs, prefix-cache affinity routing, and hybrid Human-in-the-Loop tool execution.
     </p>
 
     <div class="hero-cta-group">
       <a href="/dashboard" class="btn-solid">Explore Live Dashboard &rarr;</a>
-      <a href="/v1/episodes" class="btn-ghost">View API Endpoints</a>
+      <a href="/docs" class="btn-ghost">View API Reference &rarr;</a>
     </div>
 
     <!-- Code Block -->
