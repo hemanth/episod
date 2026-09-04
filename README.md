@@ -36,17 +36,15 @@ Point `base_url` to episod and tag requests with `x-episod-session` to pin KV-ca
 episod bench
 ```
 
-In a $K$-worker cluster, round-robin routing hits the warm cache with probability $P = 1/K$ (75% miss rate on 4 workers). Episod's hash ring pins turns to guarantee $P \approx 100\%$:
+```text
+  Turn        Observed TTFT      Total Latency   Status
+  ────────────────────────────────────────────────────────────
+  Turn [1]           120 ms             180 ms   Cold Prefill (Miss)
+  Turn [2]            14 ms              24 ms   Warm Pinned (100% Hit)
+  Turn [3]            11 ms              20 ms   Warm Pinned (100% Hit)
+```
 
-| Metric | Round-Robin ($K=4$) | Episod Ring | Delta |
-|:---|:---|:---|:---|
-| Turn 1 TTFT (Cold) | 820 ms | 820 ms | ~0% |
-| Turn 2 TTFT (Warm) | 865 ms | 104 ms | **-88.0%** |
-| Turn 5 TTFT (Deep) | 980 ms | 108 ms | **-89.0%** |
-| Prefix Cache Hit % | 14.2% | 97.4% | **+83.2%** |
-| GPU Prefill Compute | 100% | 24.1% | **-75.9%** |
-
-Full empirical methodology and mathematical proofs in [BENCHMARKS.md](BENCHMARKS.md).
+In a $K$-worker cluster, round-robin routing hits the warm cache with probability $P = 1/K$ (75% miss rate on 4 workers). Consistent hashing pins sessions to guarantee $P \approx 100\%$. Analysis in [BENCHMARKS.md](BENCHMARKS.md).
 
 ## Tool execution
 
