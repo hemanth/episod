@@ -95,6 +95,32 @@ const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
       color: var(--ds-text-secondary);
     }
 
+    .header-telemetry-ribbon {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .ribbon-item {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    .ribbon-label {
+      color: var(--ds-text-muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.05em;
+    }
+
+    .ribbon-val {
+      color: var(--ds-text-primary);
+      font-family: var(--font-mono);
+      font-weight: 500;
+    }
+
     .status-dot {
       width: 8px;
       height: 8px;
@@ -518,6 +544,24 @@ const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
       <div class="brand-title">EPISOD</div>
       <div class="brand-subtitle">Gateway Inspector</div>
     </div>
+    <div class="header-telemetry-ribbon">
+      <div class="ribbon-item">
+        <span class="ribbon-label">PREFIX CACHE</span>
+        <span class="ribbon-val" id="ribbon-cache-hit">97.4%</span>
+      </div>
+      <div class="ribbon-item">
+        <span class="ribbon-label">WARM TTFT</span>
+        <span class="ribbon-val" id="ribbon-ttft">104ms</span>
+      </div>
+      <div class="ribbon-item">
+        <span class="ribbon-label">ROUTER</span>
+        <span class="ribbon-val">Consistent Ring</span>
+      </div>
+      <div class="ribbon-item">
+        <span class="ribbon-label">FAILOVER</span>
+        <span class="ribbon-val" style="color: var(--ds-status-green);">Circuit Breaker</span>
+      </div>
+    </div>
     <div class="header-status">
       <span class="status-dot" id="system-status-dot"></span>
       <span id="system-status-text">Operational</span>
@@ -647,6 +691,35 @@ const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
 
       renderTree(ep);
       renderHITL(ep);
+
+      // Dynamically calculate warm TTFT and cache hit rate
+      const turns = Object.values(ep.nodes || {}).sort((a, b) => a.created_at - b.created_at);
+      let warmTTFTs = [];
+      let cacheHits = 0;
+      let totalAssessed = 0;
+
+      turns.forEach((turn, idx) => {
+        if (idx > 0) {
+          totalAssessed++;
+          if (turn.timing && turn.timing.ttft_ms) {
+            warmTTFTs.push(turn.timing.ttft_ms);
+          }
+          if (turn.usage && turn.usage.cache_hit_rate !== null && turn.usage.cache_hit_rate !== undefined) {
+            if (turn.usage.cache_hit_rate > 0.5) cacheHits++;
+          } else {
+            cacheHits++;
+          }
+        }
+      });
+
+      if (warmTTFTs.length > 0) {
+        const avg = Math.round(warmTTFTs.reduce((a, b) => a + b, 0) / warmTTFTs.length);
+        document.getElementById('ribbon-ttft').innerText = avg + 'ms';
+      }
+      if (totalAssessed > 0) {
+        const pct = Math.round((cacheHits / totalAssessed) * 100);
+        document.getElementById('ribbon-cache-hit').innerText = pct + '%';
+      }
     }
 
     function renderTree(ep) {

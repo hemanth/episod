@@ -1,4 +1,5 @@
 pub mod adapter;
+pub mod bench;
 pub mod config;
 pub mod guardrails;
 pub mod models;

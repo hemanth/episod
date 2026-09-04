@@ -58,6 +58,25 @@ enum Commands {
         #[arg(long, default_value = "episod.db")]
         db: String,
     },
+
+    /// Benchmark KV-cache affinity latency savings (TTFT comparison)
+    Bench {
+        /// Target Episod gateway URL (e.g. http://localhost:8080)
+        #[arg(short, long)]
+        target: Option<String>,
+
+        /// Number of conversation turns per session (default: 5)
+        #[arg(short = 'n', long, default_value_t = 5)]
+        turns: usize,
+
+        /// Number of concurrent sessions (default: 4)
+        #[arg(short = 's', long, default_value_t = 4)]
+        sessions: usize,
+
+        /// Force simulation mode against simulated GPU cluster
+        #[arg(long)]
+        simulated: bool,
+    },
 }
 
 #[tokio::main]
@@ -218,6 +237,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     std::process::exit(1);
                 }
             }
+        }
+
+        Commands::Bench {
+            target,
+            turns,
+            sessions,
+            simulated,
+        } => {
+            episod::bench::run_benchmark(episod::bench::BenchmarkConfig {
+                target,
+                turns,
+                sessions,
+                simulated,
+            })
+            .await?;
         }
     }
 
