@@ -24,24 +24,25 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Start the Episod gateway server
+    #[command(alias = "start")]
     Serve {
         /// Path to configuration file (TOML)
         #[arg(short, long)]
         config: Option<PathBuf>,
 
-        /// Port to bind the server to (overrides config)
-        #[arg(short, long)]
+        /// Port to bind the server to (overrides config or $PORT)
+        #[arg(short, long, env = "PORT")]
         port: Option<u16>,
 
-        /// Host to bind the server to (overrides config)
-        #[arg(long)]
+        /// Host to bind the server to (overrides config or $HOST)
+        #[arg(long, env = "HOST")]
         host: Option<String>,
     },
 
     /// Zero-config local development mode (auto-detects local Ollama / vLLM)
     Dev {
-        /// Port to bind the server to (default 8080)
-        #[arg(short, long, default_value_t = 8080)]
+        /// Port to bind the server to (default 8080 or $PORT)
+        #[arg(short, long, env = "PORT", default_value_t = 8080)]
         port: u16,
 
         /// Path to SQLite database
@@ -100,7 +101,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 EpisodConfig::default()
             };
 
-            if let Some(p) = port {
+            let env_port = std::env::var("PORT")
+                .or_else(|_| std::env::var("EPISOD_PORT"))
+                .ok()
+                .and_then(|p| p.parse::<u16>().ok());
+
+            if let Some(p) = port.or(env_port) {
                 cfg.server.port = p;
             }
             if let Some(h) = host {
