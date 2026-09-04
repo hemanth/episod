@@ -506,3 +506,160 @@ async fn test_client_disconnect_cancellation() {
     // Wait a brief moment to ensure background cancellation runs cleanly without panicking
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 }
+
+#[tokio::test]
+async fn test_openai_responses_api_streaming_and_rehydration() {
+    let adapter = MockAdapter::new();
+    adapter.add_behavior(MockBehavior::TextReply("This is the first response.".to_string()));
+    adapter.add_behavior(MockBehavior::TextReply("This is the second chained response.".to_string()));
+
+    let (app, _store, _tools) = setup_test_app(adapter);
+
+    // 1. Streaming POST /v1/responses
+    let req1 = json!({
+        "model": "test-model",
+        "input": "First question",
+        "stream": true
+    });
+
+    let resp1 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/responses")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&req1).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp1.status(), StatusCode::OK);
+    let bytes1 = resp1.into_body().collect().await.unwrap().to_bytes();
+    let body_str1 = String::from_utf8(bytes1.to_vec()).unwrap();
+
+    assert!(body_str1.contains("event: response.created"));
+    assert!(body_str1.contains("event: response.output_text.delta"));
+    assert!(body_str1.contains("event: response.output_text.done"));
+    assert!(body_str1.contains("event: response.completed"));
+    assert!(body_str1.contains("This is the first response."));
+
+    // Find the response ID from response.created event
+    let resp_id = body_str1
+        .lines()
+        .find(|l| l.contains("\"id\":\"resp_") || l.contains("\"id\": \"resp_"))
+        .and_then(|l| {
+            let json_part = l.strip_prefix("data: ").unwrap_or(l);
+            let v: Value = serde_json::from_str(json_part).ok()?;
+            v["response"]["id"].as_str().map(|s| s.to_string())
+        })
+        .expect("Should have response ID");
+
+    // 2. Non-streaming POST /v1/responses with previous_response_id
+    let req2 = json!({
+        "model": "test-model",
+        "input": "Second question",
+        "previous_response_id": resp_id,
+        "stream": false
+    });
+
+    let resp2 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/responses")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&req2).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp2.status(), StatusCode::OK);
+    let bytes2 = resp2.into_body().collect().await.unwrap().to_bytes();
+    let v2: Value = serde_json::from_slice(&bytes2).unwrap();
+
+    assert_eq!(v2["object"], "response");
+    assert_eq!(v2["status"], "completed");
+    assert_eq!(v2["output"][0]["role"], "assistant");
+    assert_eq!(
+        v2["output"][0]["content"][0]["text"],
+        "This is the second chained response."
+    );
+    assert!(v2["usage"]["total_tokens"].as_u64().unwrap() > 0);
+}
+
+#[tokio::test]
+async fn test_openai_chat_completions_compatibility() {
+    let adapter = MockAdapter::new();
+    adapter.add_behavior(MockBehavior::TextReply("Chat completions non-streaming reply.".to_string()));
+    adapter.add_behavior(MockBehavior::TextReply("Chat completions streaming reply.".to_string()));
+
+    let (app, _store, _tools) = setup_test_app(adapter);
+
+    // 1. Non-streaming POST /v1/chat/completions
+    let req1 = json!({
+        "model": "test-model",
+        "messages": [
+            { "role": "user", "content": "Hello non-streaming" }
+        ],
+        "stream": false
+    });
+
+    let resp1 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/chat/completions")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&req1).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp1.status(), StatusCode::OK);
+    let bytes1 = resp1.into_body().collect().await.unwrap().to_bytes();
+    let v1: Value = serde_json::from_slice(&bytes1).unwrap();
+
+    assert_eq!(v1["object"], "chat.completion");
+    assert_eq!(
+        v1["choices"][0]["message"]["content"],
+        "Chat completions non-streaming reply."
+    );
+    assert_eq!(v1["choices"][0]["finish_reason"], "stop");
+
+    // 2. Streaming POST /v1/chat/completions
+    let req2 = json!({
+        "model": "test-model",
+        "messages": [
+            { "role": "user", "content": "Hello streaming" }
+        ],
+        "stream": true
+    });
+
+    let resp2 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/chat/completions")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&req2).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp2.status(), StatusCode::OK);
+    let bytes2 = resp2.into_body().collect().await.unwrap().to_bytes();
+    let body_str2 = String::from_utf8(bytes2.to_vec()).unwrap();
+
+    assert!(body_str2.contains("chat.completion.chunk"));
+    assert!(body_str2.contains("\"content\":\"Chat \"") || body_str2.contains("Chat "));
+    assert!(body_str2.contains("\"content\":\"streaming \"") || body_str2.contains("streaming "));
+    assert!(body_str2.contains("data: [DONE]"));
+}

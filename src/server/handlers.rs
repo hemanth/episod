@@ -203,9 +203,9 @@ pub async fn approve_tool(
 
 use tokio_util::sync::CancellationToken;
 
-struct CancelOnDropStream<S> {
-    inner: S,
-    cancel_token: CancellationToken,
+pub(crate) struct CancelOnDropStream<S> {
+    pub(crate) inner: S,
+    pub(crate) cancel_token: CancellationToken,
 }
 
 impl<S: Stream + Unpin> Stream for CancelOnDropStream<S> {
@@ -333,6 +333,9 @@ async fn run_turn_orchestration(
     let mut accumulated_tool_calls: Vec<ToolCall> = Vec::new();
     let mut accumulated_tool_results: Vec<ToolExecutionResult> = Vec::new();
     let mut final_assistant_content = String::new();
+    let start_time = std::time::Instant::now();
+    let mut ttft_ms: Option<u64> = None;
+    let mut last_usage: Option<crate::models::TokenUsage> = None;
 
     loop {
         // Cancellation check
@@ -401,6 +404,9 @@ async fn run_turn_orchestration(
                             return;
                         }
                         Ok(StreamItem::Token(token)) => {
+                            if ttft_ms.is_none() {
+                                ttft_ms = Some(start_time.elapsed().as_millis() as u64);
+                            }
                             final_assistant_content.push_str(&token);
                             emit_event(
                                 &tx,
@@ -410,6 +416,9 @@ async fn run_turn_orchestration(
                                 },
                             )
                             .await;
+                        }
+                        Ok(StreamItem::Usage(usage)) => {
+                            last_usage = Some(usage);
                         }
                         Ok(StreamItem::ToolCallDelta {
                             index,
@@ -589,16 +598,33 @@ async fn run_turn_orchestration(
 
     // Append turn node into DAG
     let assistant_msg = if !final_assistant_content.is_empty() {
-        Some(Message::assistant(final_assistant_content))
+        Some(Message::assistant(final_assistant_content.clone()))
     } else {
         None
     };
 
-    let node_id = ep.append_turn(
+    let total_ms = start_time.elapsed().as_millis() as u64;
+    let timing = crate::models::TurnTiming { ttft_ms, total_ms };
+
+    let final_usage = last_usage.or_else(|| {
+        let prompt_tokens = crate::guardrails::ContextBudgetManager::estimate_total_tokens(&history);
+        let completion_tokens = crate::guardrails::ContextBudgetManager::estimate_tokens(&final_assistant_content);
+        Some(crate::models::TokenUsage {
+            prompt_tokens,
+            completion_tokens,
+            total_tokens: prompt_tokens + completion_tokens,
+            cached_tokens: None,
+            cache_hit_rate: None,
+        })
+    });
+
+    let node_id = ep.append_turn_with_telemetry(
         user_msg,
         assistant_msg,
         accumulated_tool_calls,
         accumulated_tool_results,
+        final_usage.clone(),
+        Some(timing.clone()),
     );
 
     if let Err(e) = state.store.update_episode(ep.clone()).await {
@@ -612,6 +638,8 @@ async fn run_turn_orchestration(
             turn_id,
             node_id,
             finish_reason: "stop".to_string(),
+            usage: final_usage,
+            timing: Some(timing),
         },
     )
     .await;

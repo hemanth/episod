@@ -3,6 +3,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::events::{TokenUsage, TurnTiming};
 use super::message::{Message, ToolCall};
 use super::tool::ToolExecutionResult;
 
@@ -15,6 +16,10 @@ pub struct TurnNode {
     pub assistant_message: Option<Message>,
     pub tool_calls: Vec<ToolCall>,
     pub tool_results: Vec<ToolExecutionResult>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usage: Option<TokenUsage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timing: Option<TurnTiming>,
     pub created_at: i64,
 }
 
@@ -34,6 +39,8 @@ impl TurnNode {
             assistant_message,
             tool_calls,
             tool_results,
+            usage: None,
+            timing: None,
             created_at: Utc::now().timestamp_millis(),
         }
     }
@@ -93,6 +100,42 @@ impl Episode {
             tool_calls,
             tool_results,
         );
+        let new_id = new_node.id.clone();
+
+        if let Some(ref pid) = parent_id {
+            if let Some(parent) = self.nodes.get_mut(pid) {
+                parent.children_ids.push(new_id.clone());
+            }
+        } else {
+            self.root_node_id = Some(new_id.clone());
+        }
+
+        self.nodes.insert(new_id.clone(), new_node);
+        self.active_leaf_id = Some(new_id.clone());
+        self.updated_at = Utc::now().timestamp_millis();
+        new_id
+    }
+
+    /// Append a new turn to the DAG with telemetry (token usage and timing metrics)
+    pub fn append_turn_with_telemetry(
+        &mut self,
+        user_msg: Option<Message>,
+        assistant_msg: Option<Message>,
+        tool_calls: Vec<ToolCall>,
+        tool_results: Vec<ToolExecutionResult>,
+        usage: Option<TokenUsage>,
+        timing: Option<TurnTiming>,
+    ) -> String {
+        let parent_id = self.active_leaf_id.clone();
+        let mut new_node = TurnNode::new(
+            parent_id.clone(),
+            user_msg,
+            assistant_msg,
+            tool_calls,
+            tool_results,
+        );
+        new_node.usage = usage;
+        new_node.timing = timing;
         let new_id = new_node.id.clone();
 
         if let Some(ref pid) = parent_id {

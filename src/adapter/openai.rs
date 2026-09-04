@@ -157,6 +157,39 @@ impl InferenceAdapter for OpenAIAdapter {
                             }
                         }
 
+                        // 4. Token usage and KV-cache telemetry
+                        if let Some(usage_val) = parsed.get("usage") {
+                            let prompt_tokens = usage_val.get("prompt_tokens").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                            let completion_tokens = usage_val.get("completion_tokens").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                            let total_tokens = usage_val
+                                .get("total_tokens")
+                                .and_then(|v| v.as_u64())
+                                .map(|v| v as usize)
+                                .unwrap_or(prompt_tokens + completion_tokens);
+
+                            let cached_tokens = usage_val
+                                .get("prompt_tokens_details")
+                                .and_then(|d| d.get("cached_tokens"))
+                                .and_then(|v| v.as_u64())
+                                .map(|c| c as usize);
+
+                            let cache_hit_rate = cached_tokens.map(|c| {
+                                if prompt_tokens > 0 {
+                                    (c as f64) / (prompt_tokens as f64)
+                                } else {
+                                    0.0
+                                }
+                            });
+
+                            items.push(Ok(StreamItem::Usage(crate::models::TokenUsage {
+                                prompt_tokens,
+                                completion_tokens,
+                                total_tokens,
+                                cached_tokens,
+                                cache_hit_rate,
+                            })));
+                        }
+
                         items
                     }
                 }

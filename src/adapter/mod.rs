@@ -4,7 +4,7 @@ use futures_util::Stream;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::models::{Message, ToolDefinition};
+use crate::models::{Message, TokenUsage, ToolDefinition};
 
 pub mod mock;
 pub mod openai;
@@ -24,6 +24,7 @@ pub enum StreamItem {
     Finish {
         reason: String,
     },
+    Usage(TokenUsage),
 }
 
 #[derive(Error, Debug)]

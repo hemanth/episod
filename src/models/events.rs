@@ -1,6 +1,24 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct TokenUsage {
+    pub prompt_tokens: usize,
+    pub completion_tokens: usize,
+    pub total_tokens: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cached_tokens: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_hit_rate: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct TurnTiming {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ttft_ms: Option<u64>,
+    pub total_ms: u64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "event", content = "data", rename_all = "snake_case")]
 pub enum AgentEvent {
@@ -55,6 +73,10 @@ pub enum AgentEvent {
         turn_id: String,
         node_id: String,
         finish_reason: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        usage: Option<TokenUsage>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        timing: Option<TurnTiming>,
     },
     Error {
         turn_id: Option<String>,

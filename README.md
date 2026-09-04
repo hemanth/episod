@@ -213,6 +213,80 @@ with client.stream("POST", f"/v1/episodes/{episode_id}/turns", json={
 
 ---
 
+## 🔄 OpenAI API Drop-In Compatibility
+
+Episod provides native drop-in endpoints for existing OpenAI client SDKs and tools:
+
+### 1. OpenAI Responses API (`POST /v1/responses`)
+
+Stateful conversations with automatic DAG rehydration using `previous_response_id`:
+
+```bash
+# First turn (Streaming SSE)
+curl -N -X POST http://localhost:8080/v1/responses \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "meta-llama/Llama-3.1-8B-Instruct",
+    "input": "Summarize the theory of general relativity in two sentences.",
+    "stream": true
+  }'
+
+# Second turn chained with previous_response_id (Non-streaming)
+curl -X POST http://localhost:8080/v1/responses \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "meta-llama/Llama-3.1-8B-Instruct",
+    "input": "Now explain it like I am 5.",
+    "previous_response_id": "resp_018f3a9e...",
+    "stream": false
+  }'
+```
+
+### 2. Standard Chat Completions (`POST /v1/chat/completions`)
+
+Drop-in replacement for OpenAI SDKs (`openai.OpenAI(base_url="http://localhost:8080/v1")`):
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:8080/v1", api_key="none")
+
+response = client.chat.completions.create(
+    model="meta-llama/Llama-3.1-8B-Instruct",
+    messages=[{"role": "user", "content": "Hello!"}],
+    extra_headers={"x-episod-session": "optional-session-id"} # Pin session & cache affinity
+)
+print(response.choices[0].message.content)
+```
+
+---
+
+## 📊 Telemetry & KV-Cache Monitoring
+
+Every turn completed event includes performance and token telemetry:
+
+```json
+{
+  "event": "turn_completed",
+  "data": {
+    "node_id": "turn_389271a...",
+    "timing": {
+      "ttft_ms": 142,
+      "total_ms": 684
+    },
+    "usage": {
+      "prompt_tokens": 128,
+      "completion_tokens": 64,
+      "total_tokens": 192,
+      "cached_tokens": 96,
+      "cache_hit_rate": 0.75
+    }
+  }
+}
+```
+
+---
+
 ## ⚙️ Configuration (`episod.toml`)
 
 ```toml

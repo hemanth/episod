@@ -1,4 +1,5 @@
 pub mod handlers;
+pub mod openai_compat;
 pub mod routes;
 
 use std::sync::Arc;
