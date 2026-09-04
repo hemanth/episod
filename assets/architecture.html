@@ -134,7 +134,7 @@
       <div class="eyebrow">SYSTEM SCHEMATIC // 01</div>
       <h1>Episod Gateway Architecture</h1>
       <p class="subtitle">
-        Monochrome architectural schematic illustrating stateful conversational DAGs, prefix affinity routing, and human-in-the-loop tool execution for stateless inference engines.
+        The KV-cache affinity gateway for LLM inference. Pins multi-turn agent turns and prompt prefixes to GPU workers via consistent hashing, eliminating redundant prefill computation.
       </p>
     </header>
 
@@ -234,7 +234,7 @@
         <rect x="264" y="120" width="48" height="14" rx="2" fill="transparent" stroke="#000000" stroke-width="0.8"/>
         <text x="288" y="130" fill="#000000" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">ROUTER</text>
         <text x="348" y="156" fill="#000000" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Ingress &amp; Streamer</text>
-        <text x="348" y="174" fill="#555555" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Axum • SSE Events</text>
+        <text x="348" y="174" fill="#555555" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">OpenAI Drop-In • SSE</text>
 
         <!-- Node 4: Episodic DAG Store (FOCAL INVERTED) -->
         <rect x="488" y="112" width="184" height="88" rx="6" fill="#000000" stroke="#000000" stroke-width="1.2"/>
@@ -248,7 +248,7 @@
         <rect x="264" y="280" width="48" height="14" rx="2" fill="transparent" stroke="#000000" stroke-width="0.8"/>
         <text x="288" y="290" fill="#000000" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">POLICY</text>
         <text x="348" y="316" fill="#000000" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Tool &amp; HITL Engine</text>
-        <text x="348" y="334" fill="#555555" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Auto-loop &amp; Approval Gate</text>
+        <text x="348" y="334" fill="#555555" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Client-Delegated • HITL</text>
 
         <!-- Node 6: Consistent Hash Ring -->
         <rect x="488" y="272" width="184" height="88" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
