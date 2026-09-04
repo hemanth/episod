@@ -1,10 +1,10 @@
-use axum::routing::{get, post};
 use axum::Router;
+use axum::routing::{get, post};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
-use super::handlers::*;
 use super::AppState;
+use super::handlers::*;
 
 pub fn create_routes(state: AppState) -> Router {
     let cors = CorsLayer::new()
@@ -19,8 +19,14 @@ pub fn create_routes(state: AppState) -> Router {
         .route("/v1/episodes/{id}/turns", post(submit_turn))
         .route("/v1/episodes/{id}/fork", post(fork_episode))
         .route("/v1/episodes/{id}/approve", post(approve_tool))
-        .route("/v1/responses", post(super::openai_compat::handle_responses_api))
-        .route("/v1/chat/completions", post(super::openai_compat::handle_chat_completions))
+        .route(
+            "/v1/responses",
+            post(super::openai_compat::handle_responses_api),
+        )
+        .route(
+            "/v1/chat/completions",
+            post(super::openai_compat::handle_chat_completions),
+        )
         .route("/dashboard", get(super::dashboard::render_dashboard))
         .route("/docs", get(super::docs::render_docs))
         .route("/", get(super::landing::render_landing_page))

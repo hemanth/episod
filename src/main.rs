@@ -1,14 +1,14 @@
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use clap::{Parser, Subcommand};
 use tokio::net::TcpListener;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use episod::{
-    create_router, spawn_health_checker, AppState, BackendReplica, ConsistentHashRouter,
-    Episode, EpisodConfig, InMemoryStore, OpenAIAdapter, SqliteStore, StateStore, ToolRegistry,
+    AppState, BackendReplica, ConsistentHashRouter, EpisodConfig, Episode, InMemoryStore,
+    OpenAIAdapter, SqliteStore, StateStore, ToolRegistry, create_router, spawn_health_checker,
 };
 
 #[derive(Parser, Debug)]
@@ -112,7 +112,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 info!("Using In-Memory state store");
                 Arc::new(InMemoryStore::new())
             } else {
-                info!("Using SQLite persistent state store: {}", cfg.storage.database_path);
+                info!(
+                    "Using SQLite persistent state store: {}",
+                    cfg.storage.database_path
+                );
                 Arc::new(SqliteStore::new(&cfg.storage.database_path)?)
             };
 
@@ -136,12 +139,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let tool_registry = ToolRegistry::new();
 
             // 4. AppState with default guardrails & striped session locks
-            let state = AppState::new(
-                store,
-                router,
-                adapter,
-                tool_registry,
-            );
+            let state = AppState::new(store, router, adapter, tool_registry);
 
             let app = create_router(state);
 
@@ -154,7 +152,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  • Health Endpoint:  http://{}/health", bind_addr);
             println!("  • Episodes API:     http://{}/v1/episodes", bind_addr);
             println!("  • OpenAI Responses: http://{}/v1/responses", bind_addr);
-            println!("  • Chat Completions: http://{}/v1/chat/completions", bind_addr);
+            println!(
+                "  • Chat Completions: http://{}/v1/chat/completions",
+                bind_addr
+            );
             println!("  -------------------------------------------------------------");
             println!();
 
@@ -190,7 +191,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("  🔍 Auto-detected local engine: vLLM on http://127.0.0.1:8000");
                 }
             } else {
-                println!("  ℹ️  No local engine auto-detected. Defaulting upstream to http://127.0.0.1:8000/v1");
+                println!(
+                    "  ℹ️  No local engine auto-detected. Defaulting upstream to http://127.0.0.1:8000/v1"
+                );
             }
 
             println!("  💾 Persistent Store: SQLite (WAL mode) -> {}", db);
@@ -204,12 +207,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let adapter = Arc::new(OpenAIAdapter::new(api_key));
             let tool_registry = ToolRegistry::new();
 
-            let state = AppState::new(
-                store,
-                router,
-                adapter,
-                tool_registry,
-            );
+            let state = AppState::new(store, router, adapter, tool_registry);
 
             let app = create_router(state);
             let bind_addr = format!("127.0.0.1:{}", port);
@@ -219,7 +217,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  -------------------------------------------------------------");
             println!("  • Web Inspector:    http://{}/dashboard", bind_addr);
             println!("  • OpenAI Responses: http://{}/v1/responses", bind_addr);
-            println!("  • Chat Completions: http://{}/v1/chat/completions", bind_addr);
+            println!(
+                "  • Chat Completions: http://{}/v1/chat/completions",
+                bind_addr
+            );
             println!("  -------------------------------------------------------------");
             println!();
 
@@ -285,7 +286,13 @@ fn print_dag_tree(ep: &Episode) {
             ""
         };
 
-        println!("{} [{}] Node ID: {}{}", branch_char, idx + 1, node.id, leaf_marker);
+        println!(
+            "{} [{}] Node ID: {}{}",
+            branch_char,
+            idx + 1,
+            node.id,
+            leaf_marker
+        );
 
         if let Some(ref parent) = node.parent_id {
             println!("│   ↳ Parent: {}", parent);
@@ -298,7 +305,10 @@ fn print_dag_tree(ep: &Episode) {
         }
 
         for tc in &node.tool_calls {
-            println!("│   🛠️ Tool Call: {}(args: {})", tc.function.name, tc.function.arguments);
+            println!(
+                "│   🛠️ Tool Call: {}(args: {})",
+                tc.function.name, tc.function.arguments
+            );
         }
 
         for tr in &node.tool_results {
@@ -335,7 +345,10 @@ fn print_dag_tree(ep: &Episode) {
             .map(|r| format!("{:.0}%", r * 100.0))
             .unwrap_or_else(|| "n/a".into());
 
-        println!("│   📊 Metrics: TTFT: {} | Total: {} | Tokens: {} | Cache: {}", ttft, total, tokens, hit_rate);
+        println!(
+            "│   📊 Metrics: TTFT: {} | Total: {} | Tokens: {} | Cache: {}",
+            ttft, total, tokens, hit_rate
+        );
         if !is_last {
             println!("│");
         }

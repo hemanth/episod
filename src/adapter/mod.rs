@@ -1,7 +1,7 @@
-use std::pin::Pin;
 use async_trait::async_trait;
 use futures_util::Stream;
 use serde::{Deserialize, Serialize};
+use std::pin::Pin;
 use thiserror::Error;
 
 use crate::models::{Message, TokenUsage, ToolDefinition};

@@ -5,8 +5,8 @@ pub mod landing;
 pub mod openai_compat;
 pub mod routes;
 
-use std::sync::Arc;
 use axum::Router;
+use std::sync::Arc;
 
 use crate::adapter::InferenceAdapter;
 use crate::guardrails::{ContextBudgetManager, InputGuardrail, ToolGuardrail};

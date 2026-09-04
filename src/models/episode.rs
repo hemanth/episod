@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 use super::events::{TokenUsage, TurnTiming};
@@ -171,8 +171,7 @@ impl Episode {
             messages.push(Message::system(sys.clone()));
         }
 
-        let start_id = target_node_id
-            .or(self.active_leaf_id.as_deref());
+        let start_id = target_node_id.or(self.active_leaf_id.as_deref());
 
         let mut current_id = start_id;
         let mut turn_chain = Vec::new();

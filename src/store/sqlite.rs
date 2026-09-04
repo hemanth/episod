@@ -1,8 +1,8 @@
-use std::path::Path;
-use std::sync::Arc;
 use async_trait::async_trait;
 use parking_lot::Mutex;
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
+use std::path::Path;
+use std::sync::Arc;
 
 use super::{StateStore, StoreError};
 use crate::models::Episode;
@@ -117,8 +117,13 @@ impl StateStore for SqliteStore {
                 .query(params![id_str])
                 .map_err(|e| StoreError::Internal(format!("Query failed: {}", e)))?;
 
-            if let Some(row) = rows.next().map_err(|e| StoreError::Internal(e.to_string()))? {
-                let data_str: String = row.get(0).map_err(|e| StoreError::Internal(e.to_string()))?;
+            if let Some(row) = rows
+                .next()
+                .map_err(|e| StoreError::Internal(e.to_string()))?
+            {
+                let data_str: String = row
+                    .get(0)
+                    .map_err(|e| StoreError::Internal(e.to_string()))?;
                 let episode: Episode = serde_json::from_str(&data_str)
                     .map_err(|e| StoreError::Internal(format!("Failed to deserialize: {}", e)))?;
                 Ok(Some(episode))

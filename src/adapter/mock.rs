@@ -1,7 +1,7 @@
-use std::sync::Arc;
 use async_trait::async_trait;
 use futures_util::stream;
 use parking_lot::Mutex;
+use std::sync::Arc;
 
 use super::{AdapterError, InferenceAdapter, ItemStream, StreamItem};
 use crate::models::{Message, ToolDefinition};
@@ -78,7 +78,11 @@ impl InferenceAdapter for MockAdapter {
                     reason: "stop".to_string(),
                 }));
             }
-            MockBehavior::ToolCall { id, name, arguments } => {
+            MockBehavior::ToolCall {
+                id,
+                name,
+                arguments,
+            } => {
                 items.push(Ok(StreamItem::ToolCallDelta {
                     index: 0,
                     id: Some(id),

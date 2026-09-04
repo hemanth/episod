@@ -1,13 +1,13 @@
-use std::collections::HashMap;
-use std::convert::Infallible;
-use std::time::Duration;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Json};
 use futures_util::{Stream, StreamExt};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
+use std::collections::HashMap;
+use std::convert::Infallible;
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::{error, warn};
@@ -183,12 +183,7 @@ pub async fn approve_tool(
     };
 
     // Append this approved tool execution result to the DAG
-    ep.append_turn(
-        None,
-        None,
-        vec![pending.tool_call],
-        vec![result.clone()],
-    );
+    ep.append_turn(None, None, vec![pending.tool_call], vec![result.clone()]);
 
     let updated = state
         .store
@@ -269,10 +264,7 @@ pub async fn submit_turn(
     Ok(Sse::new(stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(15))))
 }
 
-async fn emit_event(
-    tx: &mpsc::Sender<Result<Event, Infallible>>,
-    event: AgentEvent,
-) -> bool {
+async fn emit_event(tx: &mpsc::Sender<Result<Event, Infallible>>, event: AgentEvent) -> bool {
     let event_name = event.event_type();
     let data = serde_json::to_string(&event).unwrap_or_default();
     let sse_event = Event::default().event(event_name).data(data);
@@ -287,7 +279,10 @@ async fn run_turn_orchestration(
     cancel_token: CancellationToken,
 ) {
     let turn_id = format!("turn_{}", Uuid::new_v4().simple());
-    let parent_node_id = req.parent_node_id.clone().or_else(|| ep.active_leaf_id.clone());
+    let parent_node_id = req
+        .parent_node_id
+        .clone()
+        .or_else(|| ep.active_leaf_id.clone());
 
     emit_event(
         &tx,
@@ -319,7 +314,8 @@ async fn run_turn_orchestration(
                 &tx,
                 AgentEvent::Error {
                     turn_id: Some(turn_id),
-                    message: "No healthy inference backend replicas available in cluster".to_string(),
+                    message: "No healthy inference backend replicas available in cluster"
+                        .to_string(),
                 },
             )
             .await;
@@ -343,13 +339,19 @@ async fn run_turn_orchestration(
     loop {
         // Cancellation check
         if cancel_token.is_cancelled() || tx.is_closed() {
-            warn!("Episode {} turn {} cancelled due to client disconnect", ep.id, turn_id);
+            warn!(
+                "Episode {} turn {} cancelled due to client disconnect",
+                ep.id, turn_id
+            );
             return;
         }
 
         iteration += 1;
         if iteration > req.max_tool_iterations {
-            warn!("Episode {} reached max tool iterations ({})", ep.id, req.max_tool_iterations);
+            warn!(
+                "Episode {} reached max tool iterations ({})",
+                ep.id, req.max_tool_iterations
+            );
             break;
         }
 
@@ -459,7 +461,9 @@ async fn run_turn_orchestration(
         // Flush all parsed parallel tool calls
         let mut current_tool_calls: Vec<ToolCall> = Vec::new();
         for (_idx, acc) in tool_accumulators {
-            let tc_id = acc.id.unwrap_or_else(|| format!("call_{}", Uuid::new_v4().simple()));
+            let tc_id = acc
+                .id
+                .unwrap_or_else(|| format!("call_{}", Uuid::new_v4().simple()));
             let tc_name = acc.name.unwrap_or_else(|| "unknown".to_string());
             let parsed_args: Value = serde_json::from_str(&acc.arguments)
                 .unwrap_or_else(|_| json!({ "raw": acc.arguments }));
@@ -538,9 +542,11 @@ async fn run_turn_orchestration(
                     )
                     .await;
 
-                    let tool_fut = state
-                        .tool_guardrail
-                        .execute_with_timeout(state.tool_registry.execute(&tc.function.name, &tc.function.arguments));
+                    let tool_fut = state.tool_guardrail.execute_with_timeout(
+                        state
+                            .tool_registry
+                            .execute(&tc.function.name, &tc.function.arguments),
+                    );
 
                     let (output, is_error) = tokio::select! {
                         _ = cancel_token.cancelled() => {
@@ -610,8 +616,10 @@ async fn run_turn_orchestration(
     let timing = crate::models::TurnTiming { ttft_ms, total_ms };
 
     let final_usage = last_usage.or_else(|| {
-        let prompt_tokens = crate::guardrails::ContextBudgetManager::estimate_total_tokens(&history);
-        let completion_tokens = crate::guardrails::ContextBudgetManager::estimate_tokens(&final_assistant_content);
+        let prompt_tokens =
+            crate::guardrails::ContextBudgetManager::estimate_total_tokens(&history);
+        let completion_tokens =
+            crate::guardrails::ContextBudgetManager::estimate_tokens(&final_assistant_content);
         Some(crate::models::TokenUsage {
             prompt_tokens,
             completion_tokens,

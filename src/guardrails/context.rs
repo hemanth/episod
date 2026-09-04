@@ -131,14 +131,16 @@ mod tests {
     fn test_context_budget_pruning() {
         let manager = ContextBudgetManager::new(500, 100); // 400 token budget
 
-        let mut messages = vec![
-            Message::system("You are a helpful assistant."),
-        ];
+        let mut messages = vec![Message::system("You are a helpful assistant.")];
 
         // Add 10 turns of long text
         for i in 1..=10 {
             messages.push(Message::user(format!("Turn {}: {}", i, "A".repeat(200))));
-            messages.push(Message::assistant(format!("Ans {}: {}", i, "B".repeat(200))));
+            messages.push(Message::assistant(format!(
+                "Ans {}: {}",
+                i,
+                "B".repeat(200)
+            )));
         }
 
         let original_tokens = ContextBudgetManager::estimate_total_tokens(&messages);

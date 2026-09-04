@@ -1,5 +1,3 @@
-use std::convert::Infallible;
-use std::time::Duration;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::sse::{Event, KeepAlive, Sse};
@@ -8,12 +6,14 @@ use chrono::Utc;
 use futures_util::StreamExt;
 use serde::Deserialize;
 use serde_json::json;
+use std::convert::Infallible;
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use uuid::Uuid;
 
-use super::handlers::CancelOnDropStream;
 use super::AppState;
+use super::handlers::CancelOnDropStream;
 use crate::adapter::StreamItem;
 use crate::guardrails::ContextBudgetManager;
 use crate::models::{Episode, Message, TokenUsage};
@@ -85,11 +85,7 @@ pub async fn handle_responses_api(
     // 2. Find or create session using previous_response_id for DAG state hydration
     let mut episode = if let Some(ref prev_id) = payload.previous_response_id {
         // Search store for an episode containing this response/node ID
-        let episodes = state
-            .store
-            .list_episodes(50, 0)
-            .await
-            .unwrap_or_default();
+        let episodes = state.store.list_episodes(50, 0).await.unwrap_or_default();
         let found = episodes.into_iter().find(|e| e.nodes.contains_key(prev_id));
         match found {
             Some(mut ep) => {
@@ -112,10 +108,12 @@ pub async fn handle_responses_api(
 
     let pruned_history = state.context_guardrail.prune_history(history);
 
-    let replica = state
-        .router
-        .route_by_session(&episode.id)
-        .ok_or_else(|| (StatusCode::SERVICE_UNAVAILABLE, "No healthy backend replica".into()))?;
+    let replica = state.router.route_by_session(&episode.id).ok_or_else(|| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "No healthy backend replica".into(),
+        )
+    })?;
 
     let tools = payload.tools.clone().unwrap_or_default();
 
@@ -244,9 +242,8 @@ async fn run_responses_api_streaming(
 ) {
     // 1. response.created
     let _ = tx
-        .send(Ok(Event::default()
-            .event("response.created")
-            .data(json!({
+        .send(Ok(Event::default().event("response.created").data(
+            json!({
                 "response": {
                     "id": response_id,
                     "object": "response",
@@ -255,7 +252,8 @@ async fn run_responses_api_streaming(
                     "status": "in_progress"
                 }
             })
-            .to_string())))
+            .to_string(),
+        )))
         .await;
 
     let item_id = format!("msg_{}", Uuid::new_v4().simple());
@@ -264,17 +262,19 @@ async fn run_responses_api_streaming(
     let _ = tx
         .send(Ok(Event::default()
             .event("response.output_item.added")
-            .data(json!({
-                "response_id": response_id,
-                "output_index": 0,
-                "item": {
-                    "id": item_id,
-                    "type": "message",
-                    "role": "assistant",
-                    "content": []
-                }
-            })
-            .to_string())))
+            .data(
+                json!({
+                    "response_id": response_id,
+                    "output_index": 0,
+                    "item": {
+                        "id": item_id,
+                        "type": "message",
+                        "role": "assistant",
+                        "content": []
+                    }
+                })
+                .to_string(),
+            )))
         .await;
 
     let mut stream = match state
@@ -329,23 +329,27 @@ async fn run_responses_api_streaming(
     let _ = tx
         .send(Ok(Event::default()
             .event("response.output_text.done")
-            .data(json!({
-                "response_id": response_id,
-                "output_index": 0,
-                "content_index": 0,
-                "text": accumulated_text
-            })
-            .to_string())))
+            .data(
+                json!({
+                    "response_id": response_id,
+                    "output_index": 0,
+                    "content_index": 0,
+                    "text": accumulated_text
+                })
+                .to_string(),
+            )))
         .await;
 
     // 4. response.completed
     let input_tokens = final_usage.as_ref().map(|u| u.prompt_tokens).unwrap_or(0);
-    let output_tokens = final_usage.as_ref().map(|u| u.completion_tokens).unwrap_or(0);
+    let output_tokens = final_usage
+        .as_ref()
+        .map(|u| u.completion_tokens)
+        .unwrap_or(0);
 
     let _ = tx
-        .send(Ok(Event::default()
-            .event("response.completed")
-            .data(json!({
+        .send(Ok(Event::default().event("response.completed").data(
+            json!({
                 "response": {
                     "id": response_id,
                     "object": "response",
@@ -357,7 +361,8 @@ async fn run_responses_api_streaming(
                     }
                 }
             })
-            .to_string())))
+            .to_string(),
+        )))
         .await;
 
     // Save in DAG
@@ -398,10 +403,12 @@ pub async fn handle_chat_completions(
         Episode::new(&payload.model, None)
     };
 
-    let replica = state
-        .router
-        .route_by_session(&episode.id)
-        .ok_or_else(|| (StatusCode::SERVICE_UNAVAILABLE, "No healthy backend replica".into()))?;
+    let replica = state.router.route_by_session(&episode.id).ok_or_else(|| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "No healthy backend replica".into(),
+        )
+    })?;
 
     let tools = payload.tools.clone().unwrap_or_default();
     let pruned_messages = state.context_guardrail.prune_history(payload.messages);

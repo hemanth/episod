@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use eventsource_stream::Eventsource;
 use futures_util::{StreamExt, TryStreamExt};
 use reqwest::Client;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tracing::debug;
 
 use super::{AdapterError, InferenceAdapter, ItemStream, StreamItem};
@@ -125,8 +125,10 @@ impl InferenceAdapter for OpenAIAdapter {
                             .and_then(|tc| tc.as_array())
                         {
                             for tc in tool_calls {
-                                let index = tc.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as usize;
-                                let id = tc.get("id").and_then(|i| i.as_str()).map(|s| s.to_string());
+                                let index =
+                                    tc.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as usize;
+                                let id =
+                                    tc.get("id").and_then(|i| i.as_str()).map(|s| s.to_string());
                                 let name = tc
                                     .get("function")
                                     .and_then(|f| f.get("name"))
@@ -159,8 +161,16 @@ impl InferenceAdapter for OpenAIAdapter {
 
                         // 4. Token usage and KV-cache telemetry
                         if let Some(usage_val) = parsed.get("usage") {
-                            let prompt_tokens = usage_val.get("prompt_tokens").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-                            let completion_tokens = usage_val.get("completion_tokens").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                            let prompt_tokens = usage_val
+                                .get("prompt_tokens")
+                                .and_then(|v| v.as_u64())
+                                .unwrap_or(0)
+                                as usize;
+                            let completion_tokens = usage_val
+                                .get("completion_tokens")
+                                .and_then(|v| v.as_u64())
+                                .unwrap_or(0)
+                                as usize;
                             let total_tokens = usage_val
                                 .get("total_tokens")
                                 .and_then(|v| v.as_u64())

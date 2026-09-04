@@ -1,15 +1,15 @@
-use std::sync::Arc;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
+use std::sync::Arc;
 use tower::ServiceExt;
 
-use episod::{
-    create_router, AppState, BackendReplica, ConsistentHashRouter, Episode, InMemoryStore,
-    Message, MockAdapter, StateStore, ToolRegistry,
-};
 use episod::adapter::mock::MockBehavior;
+use episod::{
+    AppState, BackendReplica, ConsistentHashRouter, Episode, InMemoryStore, Message, MockAdapter,
+    StateStore, ToolRegistry, create_router,
+};
 
 fn setup_test_app(adapter: MockAdapter) -> (axum::Router, Arc<InMemoryStore>, ToolRegistry) {
     let store = Arc::new(InMemoryStore::new());
@@ -217,7 +217,12 @@ async fn test_turn_streaming_and_hitl_approval() {
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let approve_res: Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(approve_res["status"], "approved");
-    assert!(approve_res["result"]["output"].as_str().unwrap().contains("Executed command"));
+    assert!(
+        approve_res["result"]["output"]
+            .as_str()
+            .unwrap()
+            .contains("Executed command")
+    );
 
     // Verify pending approval was cleared
     let finalized_ep = store.get_episode(&ep_id).await.unwrap().unwrap();
@@ -273,7 +278,10 @@ async fn test_auto_approve_tool_execution_loop() {
 
     // Verify episode in store has recorded the tool results
     let updated = store.get_episode(&ep_id).await.unwrap().unwrap();
-    let leaf_node = updated.nodes.get(updated.active_leaf_id.as_ref().unwrap()).unwrap();
+    let leaf_node = updated
+        .nodes
+        .get(updated.active_leaf_id.as_ref().unwrap())
+        .unwrap();
     assert_eq!(leaf_node.tool_results.len(), 1);
     assert_eq!(leaf_node.tool_results[0].output, "145");
 }
@@ -367,7 +375,11 @@ async fn test_tool_guardrail_output_truncation_end_to_end() {
 
     // Register a tool that returns 50,000 characters
     tools.register_tool(
-        episod::models::ToolDefinition::new_function("verbose_tool", "Returns huge data", json!({})),
+        episod::models::ToolDefinition::new_function(
+            "verbose_tool",
+            "Returns huge data",
+            json!({}),
+        ),
         episod::ToolPolicy::AutoApprove,
         |_| async { Ok("DATA_BLOCK_".repeat(5000)) }, // 55,000 chars
     );
@@ -402,7 +414,10 @@ async fn test_tool_guardrail_output_truncation_end_to_end() {
     assert!(body_str.contains("output truncated by guardrail"));
 
     let updated = store.get_episode(&ep_id).await.unwrap().unwrap();
-    let leaf_node = updated.nodes.get(updated.active_leaf_id.as_ref().unwrap()).unwrap();
+    let leaf_node = updated
+        .nodes
+        .get(updated.active_leaf_id.as_ref().unwrap())
+        .unwrap();
     assert!(leaf_node.tool_results[0].output.len() <= 8500);
 }
 
@@ -423,7 +438,9 @@ async fn test_parallel_tool_calling_execution() {
         },
     ]));
     // Step 2: Model returns the final answer
-    adapter.add_behavior(MockBehavior::TextReply("Calculated 30 and 120.".to_string()));
+    adapter.add_behavior(MockBehavior::TextReply(
+        "Calculated 30 and 120.".to_string(),
+    ));
 
     let (app, store, _tools) = setup_test_app(adapter);
 
@@ -461,7 +478,10 @@ async fn test_parallel_tool_calling_execution() {
 
     // DAG leaf node must have recorded BOTH tool calls and BOTH tool results
     let updated = store.get_episode(&ep_id).await.unwrap().unwrap();
-    let leaf_node = updated.nodes.get(updated.active_leaf_id.as_ref().unwrap()).unwrap();
+    let leaf_node = updated
+        .nodes
+        .get(updated.active_leaf_id.as_ref().unwrap())
+        .unwrap();
     assert_eq!(leaf_node.tool_calls.len(), 2);
     assert_eq!(leaf_node.tool_results.len(), 2);
     assert_eq!(leaf_node.tool_results[0].output, "30");
@@ -472,7 +492,9 @@ async fn test_parallel_tool_calling_execution() {
 async fn test_client_disconnect_cancellation() {
     let adapter = MockAdapter::new();
     // Simulate model emitting tokens
-    adapter.add_behavior(MockBehavior::TextReply("A long response that should be cancelled.".to_string()));
+    adapter.add_behavior(MockBehavior::TextReply(
+        "A long response that should be cancelled.".to_string(),
+    ));
 
     let (app, store, _tools) = setup_test_app(adapter);
 
@@ -510,8 +532,12 @@ async fn test_client_disconnect_cancellation() {
 #[tokio::test]
 async fn test_openai_responses_api_streaming_and_rehydration() {
     let adapter = MockAdapter::new();
-    adapter.add_behavior(MockBehavior::TextReply("This is the first response.".to_string()));
-    adapter.add_behavior(MockBehavior::TextReply("This is the second chained response.".to_string()));
+    adapter.add_behavior(MockBehavior::TextReply(
+        "This is the first response.".to_string(),
+    ));
+    adapter.add_behavior(MockBehavior::TextReply(
+        "This is the second chained response.".to_string(),
+    ));
 
     let (app, _store, _tools) = setup_test_app(adapter);
 
@@ -594,8 +620,12 @@ async fn test_openai_responses_api_streaming_and_rehydration() {
 #[tokio::test]
 async fn test_openai_chat_completions_compatibility() {
     let adapter = MockAdapter::new();
-    adapter.add_behavior(MockBehavior::TextReply("Chat completions non-streaming reply.".to_string()));
-    adapter.add_behavior(MockBehavior::TextReply("Chat completions streaming reply.".to_string()));
+    adapter.add_behavior(MockBehavior::TextReply(
+        "Chat completions non-streaming reply.".to_string(),
+    ));
+    adapter.add_behavior(MockBehavior::TextReply(
+        "Chat completions streaming reply.".to_string(),
+    ));
 
     let (app, _store, _tools) = setup_test_app(adapter);
 

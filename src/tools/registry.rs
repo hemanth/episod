@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-use std::sync::Arc;
 use async_trait::async_trait;
 use parking_lot::RwLock;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use super::policy::ToolPolicy;
 use crate::models::ToolDefinition;
@@ -65,23 +65,25 @@ impl ToolRegistry {
             .unwrap_or(self.default_policy)
     }
 
-    pub fn register_tool<F, Fut>(
-        &self,
-        definition: ToolDefinition,
-        policy: ToolPolicy,
-        handler: F,
-    ) where
+    pub fn register_tool<F, Fut>(&self, definition: ToolDefinition, policy: ToolPolicy, handler: F)
+    where
         F: Fn(Value) -> Fut + Send + Sync + 'static,
         Fut: std::future::Future<Output = Result<String, String>> + Send + 'static,
     {
         let name = definition.function.name.clone();
         let boxed_handler = Arc::new(FnHandler { func: handler });
-        self.tools.write().insert(name.clone(), (definition, boxed_handler));
+        self.tools
+            .write()
+            .insert(name.clone(), (definition, boxed_handler));
         self.policies.write().insert(name, policy);
     }
 
     pub fn get_definitions(&self) -> Vec<ToolDefinition> {
-        self.tools.read().values().map(|(def, _)| def.clone()).collect()
+        self.tools
+            .read()
+            .values()
+            .map(|(def, _)| def.clone())
+            .collect()
     }
 
     pub async fn execute(&self, name: &str, arguments_raw: &str) -> Result<String, String> {
@@ -174,9 +176,15 @@ mod tests {
         let reg = ToolRegistry::new();
 
         assert_eq!(reg.get_policy("calculator"), ToolPolicy::AutoApprove);
-        assert_eq!(reg.get_policy("system_command"), ToolPolicy::RequireApproval);
+        assert_eq!(
+            reg.get_policy("system_command"),
+            ToolPolicy::RequireApproval
+        );
 
-        let res = reg.execute("calculator", r#"{"expression":"10 + 25"}"#).await.unwrap();
+        let res = reg
+            .execute("calculator", r#"{"expression":"10 + 25"}"#)
+            .await
+            .unwrap();
         assert_eq!(res, "35");
 
         let custom_def = ToolDefinition::new_function("custom", "test", json!({}));

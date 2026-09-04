@@ -1,14 +1,11 @@
-use std::time::Duration;
 use reqwest::Client;
+use std::time::Duration;
 use tokio::task::JoinHandle;
 use tracing::{debug, warn};
 
 use super::ConsistentHashRouter;
 
-pub fn spawn_health_checker(
-    router: ConsistentHashRouter,
-    interval: Duration,
-) -> JoinHandle<()> {
+pub fn spawn_health_checker(router: ConsistentHashRouter, interval: Duration) -> JoinHandle<()> {
     tokio::spawn(async move {
         let client = Client::builder()
             .timeout(Duration::from_secs(2))
