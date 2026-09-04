@@ -2,7 +2,7 @@
 set -e
 
 REPO="hemanth/episod"
-INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+VERSION="${VERSION:-latest}"
 
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
@@ -33,8 +33,25 @@ case "$OS" in
     ;;
 esac
 
-echo "Fetching latest episod release for ${TARGET}..."
-RELEASE_URL="https://github.com/${REPO}/releases/latest/download/episod-${TARGET}.tar.gz"
+# Determine installation directory
+if [ -z "$INSTALL_DIR" ]; then
+  if [ -w "/usr/local/bin" ]; then
+    INSTALL_DIR="/usr/local/bin"
+  elif [ -d "$HOME/.local/bin" ] || [ -w "$HOME" ]; then
+    INSTALL_DIR="$HOME/.local/bin"
+    mkdir -p "$INSTALL_DIR"
+  else
+    INSTALL_DIR="/usr/local/bin"
+  fi
+fi
+
+if [ "$VERSION" = "latest" ]; then
+  RELEASE_URL="https://github.com/${REPO}/releases/latest/download/episod-${TARGET}.tar.gz"
+else
+  RELEASE_URL="https://github.com/${REPO}/releases/download/${VERSION}/episod-${TARGET}.tar.gz"
+fi
+
+echo "Installing episod (${TARGET})..."
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -57,3 +74,14 @@ fi
 
 chmod +x "$INSTALL_DIR/episod"
 echo "Successfully installed episod to $INSTALL_DIR/episod"
+
+# Verify PATH
+case ":$PATH:" in
+  *":$INSTALL_DIR:"*) ;;
+  *)
+    echo ""
+    echo "Warning: $INSTALL_DIR is not in your PATH."
+    echo "Add it by running:"
+    echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
+    ;;
+esac
