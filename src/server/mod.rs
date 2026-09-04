@@ -1,5 +1,6 @@
 pub mod dashboard;
 pub mod handlers;
+pub mod landing;
 pub mod openai_compat;
 pub mod routes;
 
