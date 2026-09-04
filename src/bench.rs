@@ -179,7 +179,7 @@ async fn run_simulated_benchmark(turns: usize) {
     }
 
     println!("\n──────────────────────────────────────────────────────────────────────────");
-    println!("  \x1b[1;37mEMPIRICAL BENCHMARK SUMMARY: 4x H100 GPU REPLICAS (Llama-3.1-70B)\x1b[0m");
+    println!("  \x1b[1;37mKV-CACHE AFFINITY MODEL: 4-WORKER PREFIX CACHE CLUSTER\x1b[0m");
     println!("──────────────────────────────────────────────────────────────────────────");
     println!("  \x1b[1mMetric                   Round-Robin       Episod Ring       Improvement\x1b[0m");
     println!("  Turn 1 TTFT (Cold P50)   824 ms            820 ms             ~0%");

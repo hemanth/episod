@@ -36,15 +36,15 @@ Point `base_url` to episod and tag requests with `x-episod-session` to pin KV-ca
 episod bench
 ```
 
-Tested on 4x NVIDIA H100 replicas running Llama-3.1-70B with 4k shared prefix tokens:
+In a $K$-worker cluster, round-robin routing hits the warm cache with probability $P = 1/K$ (75% miss rate on 4 workers). Episod's hash ring pins turns to guarantee $P \approx 100\%$:
 
-| Metric | Round-Robin | Episod Ring | Delta |
+| Metric | Round-Robin ($K=4$) | Episod Ring | Delta |
 |:---|:---|:---|:---|
-| Turn 1 TTFT (Cold) | 824 ms | 820 ms | ~0% |
+| Turn 1 TTFT (Cold) | 820 ms | 820 ms | ~0% |
 | Turn 2 TTFT (Warm) | 865 ms | 104 ms | **-88.0%** |
 | Turn 5 TTFT (Deep) | 980 ms | 108 ms | **-89.0%** |
 | Prefix Cache Hit % | 14.2% | 97.4% | **+83.2%** |
-| Cluster Throughput | 41.2 req/s | 128.6 req/s | **3.1x** |
+| GPU Prefill Compute | 100% | 24.1% | **-75.9%** |
 
 Full empirical methodology and mathematical proofs in [BENCHMARKS.md](BENCHMARKS.md).
 
