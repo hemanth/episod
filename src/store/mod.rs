@@ -3,10 +3,12 @@ use thiserror::Error;
 
 use crate::models::Episode;
 
+pub mod http;
 pub mod memory;
 pub mod redis;
 pub mod sqlite;
 
+pub use http::HttpStore;
 pub use memory::InMemoryStore;
 pub use redis::RedisStore;
 pub use sqlite::SqliteStore;

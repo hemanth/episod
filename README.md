@@ -100,9 +100,20 @@ url = "http://10.0.0.1:8000/v1"
 weight = 1
 
 [storage]
+# Options: "sqlite" (default) | "redis" | "http" (webhook) | "memory"
 storage_type = "sqlite"
-sqlite_path = "episod.db"
+database_path = "episod.db"
+
+# Or connect to Redis for multi-pod Kubernetes clusters:
+# storage_type = "redis"
+# redis_url = "redis://127.0.0.1:6379"
+
+# Or bridge to your existing Postgres / Supabase stack via HTTP webhook:
+# storage_type = "http"
+# endpoint_url = "https://api.internal/episodes"
 ```
+
+Supports SQLite WAL (local dev), Redis (multi-pod clusters), and HTTP webhooks (to bridge existing Postgres, DynamoDB, or Supabase backends with zero Rust code).
 
 ## CLI
 

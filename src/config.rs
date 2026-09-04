@@ -46,6 +46,10 @@ pub struct StorageConfig {
     pub redis_url: String,
     #[serde(default = "default_ttl_seconds")]
     pub ttl_seconds: u64,
+    #[serde(default)]
+    pub endpoint_url: Option<String>,
+    #[serde(default)]
+    pub auth_header: Option<String>,
 }
 
 fn default_storage_type() -> String {
@@ -71,6 +75,8 @@ impl Default for StorageConfig {
             database_path: default_database_path(),
             redis_url: default_redis_url(),
             ttl_seconds: default_ttl_seconds(),
+            endpoint_url: None,
+            auth_header: None,
         }
     }
 }

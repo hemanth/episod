@@ -14,5 +14,7 @@ pub use guardrails::{ContextBudgetManager, InputGuardrail, ToolGuardrail};
 pub use models::{AgentEvent, Episode, Message, Role, ToolCall, ToolDefinition, TurnNode};
 pub use router::{BackendReplica, ConsistentHashRouter, spawn_health_checker};
 pub use server::{AppState, create_router};
-pub use store::{StateStore, memory::InMemoryStore, redis::RedisStore, sqlite::SqliteStore};
+pub use store::{
+    StateStore, http::HttpStore, memory::InMemoryStore, redis::RedisStore, sqlite::SqliteStore,
+};
 pub use tools::{ToolPolicy, ToolRegistry};

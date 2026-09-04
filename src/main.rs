@@ -123,6 +123,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .with_ttl(cfg.storage.ttl_seconds);
                     Arc::new(redis_store)
                 }
+                "http" => {
+                    let url = cfg
+                        .storage
+                        .endpoint_url
+                        .or_else(|| std::env::var("EPISOD_STORAGE_URL").ok())
+                        .unwrap_or_else(|| "http://127.0.0.1:3000/api/episodes".to_string());
+                    let auth = cfg
+                        .storage
+                        .auth_header
+                        .or_else(|| std::env::var("EPISOD_STORAGE_AUTH").ok());
+                    info!("Using HTTP remote webhook state store: {}", url);
+                    Arc::new(episod::HttpStore::new(url, auth))
+                }
                 _ => {
                     info!(
                         "Using SQLite persistent state store: {}",
