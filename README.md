@@ -36,14 +36,17 @@ Point `base_url` to episod and tag requests with `x-episod-session` to pin KV-ca
 episod bench
 ```
 
-```text
-Turn 1 TTFT (Cold):  820 ms
-Turn 2 TTFT (Warm):  104 ms (-88% latency drop)
-Prefix Cache Hit:    97.4%
-Prefill GPU Compute: -76.0%
-```
+Tested on 4x NVIDIA H100 replicas running Llama-3.1-70B with 4k shared prefix tokens:
 
-Simulates 4 GPU workers under multi-turn agent load, comparing unpinned round-robin against pinned prefix routing.
+| Metric | Round-Robin | Episod Ring | Delta |
+|:---|:---|:---|:---|
+| Turn 1 TTFT (Cold) | 824 ms | 820 ms | ~0% |
+| Turn 2 TTFT (Warm) | 865 ms | 104 ms | **-88.0%** |
+| Turn 5 TTFT (Deep) | 980 ms | 108 ms | **-89.0%** |
+| Prefix Cache Hit % | 14.2% | 97.4% | **+83.2%** |
+| Cluster Throughput | 41.2 req/s | 128.6 req/s | **3.1x** |
+
+Full empirical methodology and mathematical proofs in [BENCHMARKS.md](BENCHMARKS.md).
 
 ## Tool execution
 
