@@ -15,18 +15,20 @@ episod dev
 
 Auto-detects local LLMs (Ollama, vLLM), initializes SQLite, and serves the gateway at `http://localhost:8080`.
 
-```python
-from openai import OpenAI
+```diff
+  from openai import OpenAI
 
-client = OpenAI(base_url="http://localhost:8080/v1", api_key="none")
-response = client.chat.completions.create(
-    model="llama3.1:8b",
-    messages=[{"role": "user", "content": "Analyze system telemetry."}],
-    extra_headers={"x-episod-session": "agent-session-42"}
-)
+- client = OpenAI()
++ client = OpenAI(base_url="http://localhost:8080/v1", api_key="none")
+
+  response = client.chat.completions.create(
+      model="llama3.1:8b",
+      messages=[{"role": "user", "content": "Analyze system telemetry."}],
++     extra_headers={"x-episod-session": "agent-session-42"},
+  )
 ```
 
-Pins the session to the same GPU replica via consistent hashing, ensuring 100% prefix cache reuse.
+Point `base_url` to episod and tag requests with `x-episod-session` to pin KV-cache and turn history across GPU replicas.
 
 ## Benchmark
 
