@@ -3,7 +3,8 @@
 The stateful agentic gateway for LLM inference.
 
 ```bash
-cargo install episod
+curl -fsSL https://raw.githubusercontent.com/hemanth/episod/master/install.sh | sh
+# or: cargo install episod
 ```
 
 ## Quick start
