@@ -40,16 +40,23 @@ fn default_weight() -> u32 {
 pub struct StorageConfig {
     #[serde(default = "default_storage_type")]
     pub storage_type: String,
+    #[serde(default = "default_database_path")]
+    pub database_path: String,
 }
 
 fn default_storage_type() -> String {
-    "memory".to_string()
+    "sqlite".to_string()
+}
+
+fn default_database_path() -> String {
+    "episod.db".to_string()
 }
 
 impl Default for StorageConfig {
     fn default() -> Self {
         Self {
             storage_type: default_storage_type(),
+            database_path: default_database_path(),
         }
     }
 }

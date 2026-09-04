@@ -10,6 +10,8 @@ pub struct BackendReplica {
     pub url: String,
     pub weight: u32,
     pub healthy: bool,
+    #[serde(default)]
+    pub failure_count: u32,
 }
 
 impl BackendReplica {
@@ -19,6 +21,7 @@ impl BackendReplica {
             url: url.into(),
             weight: weight.max(1),
             healthy: true,
+            failure_count: 0,
         }
     }
 }
@@ -81,7 +84,36 @@ impl ConsistentHashRouter {
         let mut inner = self.inner.write();
         if let Some(replica) = inner.replicas.get_mut(id) {
             replica.healthy = healthy;
+            if healthy {
+                replica.failure_count = 0;
+            }
         }
+    }
+
+    pub fn record_success(&self, id: &str) {
+        let mut inner = self.inner.write();
+        if let Some(replica) = inner.replicas.get_mut(id) {
+            replica.healthy = true;
+            replica.failure_count = 0;
+        }
+    }
+
+    pub fn record_failure(&self, id: &str) -> bool {
+        let mut inner = self.inner.write();
+        if let Some(replica) = inner.replicas.get_mut(id) {
+            replica.failure_count = replica.failure_count.saturating_add(1);
+            if replica.failure_count >= 3 {
+                replica.healthy = false;
+                tracing::warn!(
+                    replica_id = %id,
+                    url = %replica.url,
+                    failure_count = replica.failure_count,
+                    "Replica circuit breaker tripped: marked unhealthy"
+                );
+                return true; // Tripped
+            }
+        }
+        false
     }
 
     /// Route by session ID to guarantee that multi-turn calls hit the same replica (for KV cache reuse)
@@ -167,5 +199,37 @@ mod tests {
         let fallback = router.route_by_session(session).unwrap();
         assert_ne!(fallback.id, chosen_id);
         assert!(fallback.healthy);
+    }
+
+    #[test]
+    fn test_circuit_breaker_trip_and_recovery() {
+        let router = ConsistentHashRouter::new(50);
+        let node1 = BackendReplica::new("node-1", "http://10.0.0.1:8000", 1);
+        let node2 = BackendReplica::new("node-2", "http://10.0.0.2:8000", 1);
+
+        router.add_replica(node1.clone());
+        router.add_replica(node2.clone());
+
+        let session = "session-cb-test";
+        let initial = router.route_by_session(session).unwrap();
+
+        // 1st failure: not tripped yet
+        assert!(!router.record_failure(&initial.id));
+        assert!(router.route_by_session(session).unwrap().id == initial.id);
+
+        // 2nd failure: not tripped yet
+        assert!(!router.record_failure(&initial.id));
+
+        // 3rd failure: trips!
+        assert!(router.record_failure(&initial.id));
+
+        // Now routes to fallback node
+        let fallback = router.route_by_session(session).unwrap();
+        assert_ne!(fallback.id, initial.id);
+
+        // Recovery
+        router.record_success(&initial.id);
+        let recovered = router.route_by_session(session).unwrap();
+        assert_eq!(recovered.id, initial.id);
     }
 }

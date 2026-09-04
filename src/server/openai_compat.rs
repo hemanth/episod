@@ -120,6 +120,7 @@ pub async fn handle_responses_api(
     let tools = payload.tools.clone().unwrap_or_default();
 
     if !payload.stream {
+        let _session_guard = state.acquire_session_lock(&episode.id).await;
         // Non-streaming Responses API execution
         let mut stream = state
             .adapter
@@ -200,6 +201,7 @@ pub async fn handle_responses_api(
         let model = payload.model.clone();
 
         tokio::spawn(async move {
+            let _session_guard = state_clone.acquire_session_lock(&episode.id).await;
             run_responses_api_streaming(
                 state_clone,
                 episode,

@@ -1,3 +1,4 @@
+pub mod dashboard;
 pub mod handlers;
 pub mod openai_compat;
 pub mod routes;
@@ -20,6 +21,7 @@ pub struct AppState {
     pub context_guardrail: ContextBudgetManager,
     pub tool_guardrail: ToolGuardrail,
     pub input_guardrail: InputGuardrail,
+    pub session_locks: Arc<dashmap::DashMap<String, Arc<tokio::sync::Mutex<()>>>>,
 }
 
 impl AppState {
@@ -37,7 +39,17 @@ impl AppState {
             context_guardrail: ContextBudgetManager::default(),
             tool_guardrail: ToolGuardrail::default(),
             input_guardrail: InputGuardrail::default(),
+            session_locks: Arc::new(dashmap::DashMap::new()),
         }
+    }
+
+    pub async fn acquire_session_lock(&self, session_id: &str) -> tokio::sync::OwnedMutexGuard<()> {
+        let lock = self
+            .session_locks
+            .entry(session_id.to_string())
+            .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(())))
+            .clone();
+        lock.lock_owned().await
     }
 }
 

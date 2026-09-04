@@ -26,6 +26,7 @@ toml = "0.8"
 parking_lot = "0.12"
 fnv = "1.0"
 tokio-util = "0.7"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

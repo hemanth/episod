@@ -21,6 +21,7 @@ pub fn create_routes(state: AppState) -> Router {
         .route("/v1/episodes/{id}/approve", post(approve_tool))
         .route("/v1/responses", post(super::openai_compat::handle_responses_api))
         .route("/v1/chat/completions", post(super::openai_compat::handle_chat_completions))
+        .route("/dashboard", get(super::dashboard::render_dashboard))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(state)

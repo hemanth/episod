@@ -4,6 +4,10 @@ use thiserror::Error;
 use crate::models::Episode;
 
 pub mod memory;
+pub mod sqlite;
+
+pub use memory::InMemoryStore;
+pub use sqlite::SqliteStore;
 
 #[derive(Error, Debug)]
 pub enum StoreError {

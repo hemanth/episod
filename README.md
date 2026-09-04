@@ -75,19 +75,57 @@ Stateless LLM engines (like vLLM, SGLang, and Ollama) are built for raw token th
 
 ## 🚀 Quick Start
 
-### 1. Build and Run
+### 1. Instant Zero-Config Dev Mode (`episod dev`)
+
+Auto-detects local Ollama (`http://localhost:11434`) or vLLM (`http://localhost:8000`), sets up embedded SQLite (`episod.db`), and starts the gateway with a live web inspector:
 
 ```bash
-# Clone and build with Cargo
-git clone https://github.com/your-org/episod.git
-cd episod
 cargo build --release
-
-# Run with example config
-./target/release/episod serve --config episod.example.toml
+./target/release/episod dev
+```
+```text
+  ⚡ Episod Dev Gateway Started!
+  -------------------------------------------------------------
+  • Detected Upstream: Ollama on http://127.0.0.1:11434
+  • Persistent Store:  SQLite (WAL mode) -> episod.db
+  • Web Inspector:     http://localhost:8080/dashboard
+  • OpenAI Responses:  http://localhost:8080/v1/responses
+  • Chat Completions:  http://localhost:8080/v1/chat/completions
+  -------------------------------------------------------------
 ```
 
-### 2. Create an Episode (Session)
+### 2. Embedded Web Inspector (`/dashboard`)
+
+Visit `http://localhost:8080/dashboard` in any browser to:
+- 🌿 Explore the full DAG tree of conversation turns across branches.
+- ⏱️ Inspect Time-To-First-Token (TTFT), execution latency, and token usages per turn.
+- 🔀 Click *"Fork Branch"* on any past turn to explore alternate reasoning paths.
+- 🛡️ One-click Human-in-the-Loop (HITL) tool execution approval drawer.
+
+### 3. Terminal DAG Visualizer (`episod tree`)
+
+View conversational turn trees directly in the terminal like `git log --graph`:
+
+```bash
+./target/release/episod tree ep_b7e914df088741348123abc456
+```
+```text
+🌿 Episode: ep_b7e914df088741348123abc456 (Model: llama3.1:8b)
+│  ⚙️ System Prompt: "You are an autonomous research assistant."
+│
+├── [1] Node ID: turn_aeec8e85a3b44e3e9c67b7ed79c17693
+│   👤 User: "What is 7 * 8?"
+│   🤖 Assistant: "7 multiplied by 8 is 56."
+│   📊 Metrics: TTFT: 142ms | Total: 412ms | Tokens: 64 tok | Cache: 100%
+│
+└── [2] Node ID: turn_4f04ea90d5824572a6c60192a2476be9 🌿 [Active Leaf]
+    ↳ Parent: turn_aeec8e85a3b44e3e9c67b7ed79c17693
+    👤 User: "And add 4 to that."
+    🤖 Assistant: "56 + 4 equals 60."
+    📊 Metrics: TTFT: 108ms | Total: 280ms | Tokens: 88 tok | Cache: 100%
+```
+
+### 4. Create an Episode (Session via API)
 
 ```bash
 curl -X POST http://localhost:8080/v1/episodes \

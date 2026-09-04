@@ -107,6 +107,7 @@ pub async fn fork_episode(
     Path(id): Path<String>,
     Json(payload): Json<ForkRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let _session_guard = state.acquire_session_lock(&id).await;
     let mut ep = state
         .store
         .get_episode(&id)
@@ -131,6 +132,7 @@ pub async fn approve_tool(
     Path(id): Path<String>,
     Json(payload): Json<ApprovalRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let _session_guard = state.acquire_session_lock(&id).await;
     let mut ep = state
         .store
         .get_episode(&id)
@@ -256,6 +258,7 @@ pub async fn submit_turn(
     let state_clone = state.clone();
 
     tokio::spawn(async move {
+        let _session_guard = state_clone.acquire_session_lock(&ep.id).await;
         run_turn_orchestration(state_clone, ep, payload, tx, cancel_token_clone).await;
     });
 
