@@ -1,0 +1,11 @@
+[server]
+host = "127.0.0.1"
+port = 8765
+
+[[upstreams]]
+id = "local-ollama"
+url = "http://127.0.0.1:11434/v1"
+weight = 1
+
+[storage]
+storage_type = "memory"
