@@ -46,45 +46,24 @@ episod bench
 
 In a $K$-worker cluster, round-robin routing hits the warm cache with probability $P = 1/K$ (75% miss rate on 4 workers). Consistent hashing pins sessions to guarantee $P \approx 100\%$. Analysis in [BENCHMARKS.md](BENCHMARKS.md).
 
-## Tool execution
+## API
 
 ```bash
-# Gateway executes tools or yields them directly to the client:
+# Turn execution (execute_tools: false delegates execution to client)
 curl -X POST http://localhost:8080/v1/episodes/:id/turns \
   -H "Content-Type: application/json" \
   -d '{"message": "Run query", "execute_tools": false}'
-```
 
-Set `execute_tools: false` for client-delegated execution in your own services, or `true` for server-side autonomous loops with Human-in-the-Loop approval gates.
-
-## Conversational DAG
-
-```bash
-# Fork an earlier turn without mutating history
+# Fork history at any earlier turn into an immutable DAG branch
 curl -X POST http://localhost:8080/v1/episodes/:id/fork \
   -H "Content-Type: application/json" \
   -d '{"from_node_id": "turn_01"}'
-```
 
-Turns form an immutable directed acyclic graph in SQLite WAL. Replay, fork, and branch counterfactual reasoning trees.
-
-## OpenAI Responses API
-
-```bash
+# OpenAI Responses API (zero prompt re-transmission via previous_response_id)
 curl -X POST http://localhost:8080/v1/responses \
   -H "Content-Type: application/json" \
   -d '{"model": "llama3.1:8b", "input": "Next turn", "previous_response_id": "resp_01"}'
 ```
-
-Stateful conversations via `previous_response_id` with zero prompt re-transmission over the wire.
-
-## Tree view
-
-```bash
-episod tree ep_b7e914df088741348123abc456
-```
-
-Renders conversational turn trees in the terminal with TTFT, tokens, and cache hit metrics.
 
 ## Configuration
 
