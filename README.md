@@ -1,6 +1,8 @@
 # episod
+> The KV-cache affinity gateway for LLM inference.
 
-The KV-cache affinity gateway for LLM inference.
+<img width="2472" height="1524" alt="image" src="https://github.com/user-attachments/assets/79f2ab0a-a78c-4d63-b1bb-89b96c10bdf2" />
+
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hemanth/episod/master/install.sh | sh
