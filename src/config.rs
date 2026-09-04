@@ -42,6 +42,10 @@ pub struct StorageConfig {
     pub storage_type: String,
     #[serde(default = "default_database_path")]
     pub database_path: String,
+    #[serde(default = "default_redis_url")]
+    pub redis_url: String,
+    #[serde(default = "default_ttl_seconds")]
+    pub ttl_seconds: u64,
 }
 
 fn default_storage_type() -> String {
@@ -52,11 +56,21 @@ fn default_database_path() -> String {
     "episod.db".to_string()
 }
 
+fn default_redis_url() -> String {
+    std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string())
+}
+
+fn default_ttl_seconds() -> u64 {
+    604_800 // 7 days default
+}
+
 impl Default for StorageConfig {
     fn default() -> Self {
         Self {
             storage_type: default_storage_type(),
             database_path: default_database_path(),
+            redis_url: default_redis_url(),
+            ttl_seconds: default_ttl_seconds(),
         }
     }
 }

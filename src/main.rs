@@ -108,15 +108,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             // 1. Storage
-            let store: Arc<dyn StateStore> = if cfg.storage.storage_type == "memory" {
-                info!("Using In-Memory state store");
-                Arc::new(InMemoryStore::new())
-            } else {
-                info!(
-                    "Using SQLite persistent state store: {}",
-                    cfg.storage.database_path
-                );
-                Arc::new(SqliteStore::new(&cfg.storage.database_path)?)
+            let store: Arc<dyn StateStore> = match cfg.storage.storage_type.as_str() {
+                "memory" => {
+                    info!("Using In-Memory state store");
+                    Arc::new(InMemoryStore::new())
+                }
+                "redis" => {
+                    info!(
+                        "Using Redis distributed state store: {}",
+                        cfg.storage.redis_url
+                    );
+                    let redis_store = episod::RedisStore::new(&cfg.storage.redis_url)
+                        .await?
+                        .with_ttl(cfg.storage.ttl_seconds);
+                    Arc::new(redis_store)
+                }
+                _ => {
+                    info!(
+                        "Using SQLite persistent state store: {}",
+                        cfg.storage.database_path
+                    );
+                    Arc::new(SqliteStore::new(&cfg.storage.database_path)?)
+                }
             };
 
             // 2. Router with upstreams

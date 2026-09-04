@@ -27,6 +27,7 @@ parking_lot = "0.12"
 fnv = "1.0"
 tokio-util = "0.7"
 rusqlite = { version = "0.40.2", features = ["bundled"] }
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"], default-features = false }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

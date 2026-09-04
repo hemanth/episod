@@ -17,4 +17,11 @@ url = "http://127.0.0.1:8001/v1"
 weight = 1
 
 [storage]
-storage_type = "memory" # "memory" | "redis" | "sqlite"
+# Options: "sqlite" (default) | "redis" (distributed multi-pod) | "memory" (ephemeral)
+storage_type = "sqlite"
+database_path = "episod.db"
+
+# Redis configuration (for multi-replica / Kubernetes deployments):
+# storage_type = "redis"
+# redis_url = "redis://127.0.0.1:6379" # or via REDIS_URL environment variable
+# ttl_seconds = 604800 # 7 days retention
