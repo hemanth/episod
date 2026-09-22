@@ -27,6 +27,10 @@ pub fn create_routes(state: AppState) -> Router {
             "/v1/chat/completions",
             post(super::openai_compat::handle_chat_completions),
         )
+        .route(
+            "/v1/models",
+            get(super::openai_compat::handle_list_models),
+        )
         .route("/dashboard", get(super::dashboard::render_dashboard))
         .route("/docs", get(super::docs::render_docs))
         .route("/", get(super::landing::render_landing_page))

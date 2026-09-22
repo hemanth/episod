@@ -693,3 +693,88 @@ async fn test_openai_chat_completions_compatibility() {
     assert!(body_str2.contains("\"content\":\"streaming \"") || body_str2.contains("streaming "));
     assert!(body_str2.contains("data: [DONE]"));
 }
+
+#[tokio::test]
+async fn test_models_endpoint() {
+    let adapter = MockAdapter::new();
+    let (app, _store, _tools) = setup_test_app(adapter);
+
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/v1/models")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+    let val: Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(val["object"], "list");
+    assert!(val["data"].as_array().unwrap().len() >= 2);
+}
+
+#[tokio::test]
+async fn test_openai_chat_completions_session_affinity_across_multi_replicas() {
+    let store = Arc::new(InMemoryStore::new());
+    let router = ConsistentHashRouter::new(50);
+    // Add 4 distinct replicas
+    router.add_replica(BackendReplica::new("replica-1", "http://10.0.0.1:8000", 1));
+    router.add_replica(BackendReplica::new("replica-2", "http://10.0.0.2:8000", 1));
+    router.add_replica(BackendReplica::new("replica-3", "http://10.0.0.3:8000", 1));
+    router.add_replica(BackendReplica::new("replica-4", "http://10.0.0.4:8000", 1));
+
+    let adapter = MockAdapter::new();
+    for _ in 0..10 {
+        adapter.add_behavior(MockBehavior::TextReply("Affinity test reply".to_string()));
+    }
+
+    let tool_registry = ToolRegistry::new();
+    let state = AppState::new(
+        store.clone(),
+        router.clone(),
+        Arc::new(adapter),
+        tool_registry,
+    );
+    let app = create_router(state);
+
+    let session_a = "session_user_alice";
+    let session_b = "session_user_bob";
+
+    let target_a = router.route_by_session(session_a).unwrap().id;
+    let target_b = router.route_by_session(session_b).unwrap().id;
+
+    // Send 3 requests for session A and verify each succeeds
+    for i in 1..=3 {
+        let req = json!({
+            "model": "test-model",
+            "messages": [{ "role": "user", "content": format!("Message {}", i) }],
+            "stream": false
+        });
+
+        let resp = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v1/chat/completions")
+                    .header("content-type", "application/json")
+                    .header("x-episod-session", session_a)
+                    .body(Body::from(serde_json::to_vec(&req).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    // Both sessions resolve deterministically on the consistent hash ring
+    assert_eq!(router.route_by_session(session_a).unwrap().id, target_a);
+    assert_eq!(router.route_by_session(session_b).unwrap().id, target_b);
+}
+

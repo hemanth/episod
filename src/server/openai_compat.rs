@@ -67,10 +67,16 @@ pub struct ChatCompletionsRequest {
 
 pub async fn handle_responses_api(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(payload): Json<CreateResponseRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let response_id = format!("resp_{}", Uuid::new_v4().simple());
     let now = Utc::now().timestamp();
+
+    let session_header = headers
+        .get("x-episod-session")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
 
     // 1. Resolve prompt text from input
     let user_prompt = match &payload.input {
@@ -108,7 +114,8 @@ pub async fn handle_responses_api(
 
     let pruned_history = state.context_guardrail.prune_history(history);
 
-    let replica = state.router.route_by_session(&episode.id).ok_or_else(|| {
+    let routing_key = session_header.as_deref().unwrap_or(&episode.id);
+    let replica = state.router.route_by_session(routing_key).ok_or_else(|| {
         (
             StatusCode::SERVICE_UNAVAILABLE,
             "No healthy backend replica".into(),
@@ -398,12 +405,17 @@ pub async fn handle_chat_completions(
             .get_episode(sid)
             .await
             .unwrap_or(None)
-            .unwrap_or_else(|| Episode::new(&payload.model, None))
+            .unwrap_or_else(|| {
+                let mut ep = Episode::new(&payload.model, None);
+                ep.id = sid.clone();
+                ep
+            })
     } else {
         Episode::new(&payload.model, None)
     };
 
-    let replica = state.router.route_by_session(&episode.id).ok_or_else(|| {
+    let routing_key = session_header.as_deref().unwrap_or(&episode.id);
+    let replica = state.router.route_by_session(routing_key).ok_or_else(|| {
         (
             StatusCode::SERVICE_UNAVAILABLE,
             "No healthy backend replica".into(),
@@ -536,3 +548,55 @@ pub async fn handle_chat_completions(
             .into_response())
     }
 }
+
+// ==========================================
+// Handler: GET /v1/models
+// ==========================================
+
+pub async fn handle_list_models(
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let replicas = state.router.list_replicas();
+    let healthy_replica = replicas.into_iter().find(|r| r.healthy);
+
+    if let Some(replica) = healthy_replica {
+        let clean = replica.url.trim_end_matches('/');
+        let url = if clean.ends_with("/v1") {
+            format!("{}/models", clean)
+        } else {
+            format!("{}/v1/models", clean)
+        };
+
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_millis(1500))
+            .build()
+            .unwrap_or_default();
+
+        if let Ok(res) = client.get(&url).send().await {
+            if res.status().is_success() {
+                if let Ok(json_val) = res.json::<serde_json::Value>().await {
+                    return Ok(Json(json_val));
+                }
+            }
+        }
+    }
+
+    Ok(Json(json!({
+        "object": "list",
+        "data": [
+            {
+                "id": "llama3.1:8b",
+                "object": "model",
+                "created": 1720000000,
+                "owned_by": "episod"
+            },
+            {
+                "id": "smollm2:135m",
+                "object": "model",
+                "created": 1720000000,
+                "owned_by": "episod"
+            }
+        ]
+    })))
+}
+

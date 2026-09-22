@@ -65,13 +65,15 @@ Theoretical multi-turn latency curves modeled on 4-worker clusters with 4k share
 
 ### B. Live Empirical Socket Measurements
 
-Real measurements taken by `episod bench` directly over HTTP/SSE streams against a running gateway:
+Real measurements taken by `episod bench` directly over HTTP/SSE streams against a running gateway with local LLM (`smollm2:135m`), measuring TTFT strictly upon receipt of the first `token_delta`:
 
-| Turn | Observed Socket TTFT | Total Latency | Cache Status |
-| :--- | :--- | :--- | :--- |
-| **Turn 1** | 120 ms | 180 ms | Cold Prefill (Miss) |
-| **Turn 2** | 14 ms | 24 ms | Warm Pinned (100% Hit) |
-| **Turn 3** | 11 ms | 20 ms | Warm Pinned (100% Hit) |
+| Turn | Observed Socket TTFT | Server TTFT | Total Latency | Cache Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Turn 1** | 101 ms | 100 ms | 649 ms | Cold Prefill (Initial) |
+| **Turn 2** | 53 ms | 52 ms | 842 ms | Warm Pinned (**-48% TTFT**) |
+| **Turn 3** | 46 ms | 45 ms | 1,025 ms | Warm Pinned (**-54% TTFT**) |
+
+Consistent hash routing pins subsequent turns to the identical backend replica, skipping prompt prefix re-evaluation. On engines with RadixAttention or Automatic Prefix Caching (vLLM, SGLang, Ollama context cache), TTFT drops significantly as previous turn context is reused.
 
 ---
 

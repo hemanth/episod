@@ -74,6 +74,10 @@ enum Commands {
         #[arg(short = 's', long, default_value_t = 4)]
         sessions: usize,
 
+        /// Model to use for benchmark (auto-detected if omitted)
+        #[arg(short = 'm', long)]
+        model: Option<String>,
+
         /// Force simulation mode against simulated GPU cluster
         #[arg(long)]
         simulated: bool,
@@ -276,12 +280,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             target,
             turns,
             sessions,
+            model,
             simulated,
         } => {
             episod::bench::run_benchmark(episod::bench::BenchmarkConfig {
                 target,
                 turns,
                 sessions,
+                model,
                 simulated,
             })
             .await?;

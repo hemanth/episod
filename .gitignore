@@ -4,3 +4,4 @@ assets/
 *.db-shm
 *.db-wal
 .DS_Store
+videos/

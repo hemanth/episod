@@ -1,5 +1,5 @@
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Json};
 use futures_util::{Stream, StreamExt};
@@ -224,6 +224,7 @@ impl<S> Drop for CancelOnDropStream<S> {
 
 pub async fn submit_turn(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(id): Path<String>,
     Json(payload): Json<CreateTurnRequest>,
 ) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, (StatusCode, String)> {
@@ -246,6 +247,11 @@ pub async fn submit_turn(
         .validate_episode_turn_count(ep.nodes.len())
         .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
 
+    let session_header = headers
+        .get("x-episod-session")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
     let (tx, rx) = mpsc::channel::<Result<Event, Infallible>>(64);
     let cancel_token = CancellationToken::new();
     let cancel_token_clone = cancel_token.clone();
@@ -254,7 +260,7 @@ pub async fn submit_turn(
 
     tokio::spawn(async move {
         let _session_guard = state_clone.acquire_session_lock(&ep.id).await;
-        run_turn_orchestration(state_clone, ep, payload, tx, cancel_token_clone).await;
+        run_turn_orchestration(state_clone, ep, payload, tx, cancel_token_clone, session_header).await;
     });
 
     let stream = CancelOnDropStream {
@@ -277,6 +283,7 @@ async fn run_turn_orchestration(
     req: CreateTurnRequest,
     tx: mpsc::Sender<Result<Event, Infallible>>,
     cancel_token: CancellationToken,
+    session_header: Option<String>,
 ) {
     let turn_id = format!("turn_{}", Uuid::new_v4().simple());
     let parent_node_id = req
@@ -307,7 +314,8 @@ async fn run_turn_orchestration(
     };
 
     // 2. Select backend replica via consistent hash router
-    let replica = match state.router.route_by_session(&ep.id) {
+    let routing_key = session_header.as_deref().unwrap_or(&ep.id);
+    let replica = match state.router.route_by_session(routing_key) {
         Some(r) => r,
         None => {
             emit_event(
@@ -431,6 +439,9 @@ async fn run_turn_orchestration(
                             name,
                             arguments_delta,
                         }) => {
+                            if ttft_ms.is_none() {
+                                ttft_ms = Some(start_time.elapsed().as_millis() as u64);
+                            }
                             let entry = tool_accumulators.entry(index).or_default();
                             if let Some(tc_id) = id {
                                 entry.id = Some(tc_id);
