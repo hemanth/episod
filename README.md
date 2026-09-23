@@ -103,6 +103,20 @@ Supports SQLite WAL (local dev), Redis (multi-pod clusters), and HTTP webhooks (
 - `episod tree <id>` - print conversational DAG tree in terminal
 - `episod start [-c config.toml]` - run production gateway
 
+## FAQ
+
+#### How does KV-cache affinity work?
+Episod maps session keys (`x-episod-session` or DAG episode IDs) across an FNV-1a consistent hash ring. Subsequent turns consistently land on the exact GPU worker holding the warm KV cache in VRAM (vLLM APC / SGLang RadixAttention).
+
+#### How does this compare to LMCache or distributed KV transfer?
+LMCache and Mooncake transfer KV tensors across workers over network or storage. Episod routes the request directly to the worker where the KV cache already resides, eliminating network transfer overhead. They are complementary: Episod handles local GPU affinity, distributed KV handles cold fallback.
+
+#### Can I route across different engines (vLLM, SGLang, Ollama)?
+Yes. Upstreams are normalized via standard OpenAI-compatible endpoints. Session stickiness ensures a conversation stays pinned to its assigned engine, preventing cache thrashing between incompatible KV architectures (e.g. PagedAttention vs. RadixAttention).
+
+#### What happens if a replica fails?
+The circuit breaker trips after 3 consecutive errors and routes traffic clockwise to the next healthy node on the ring. Only sessions on the failed worker experience a cold re-prefill; other sessions remain unaffected.
+
 ## License
 
 Apache-2.0
